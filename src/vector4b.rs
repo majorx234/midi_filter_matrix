@@ -1,22 +1,29 @@
-#[derive(Debug, Clone, Copy)]
+use struct_iterable::Iterable;
+
+#[derive(Debug, Clone, Copy, Iterable)]
 pub struct Vector4b {
-    pub x: bool,
-    pub y: bool,
-    pub z: bool,
-    pub w: bool,
+    pub midi_out0: bool,
+    pub midi_out1: bool,
+    pub midi_out2: bool,
+    pub midi_out3: bool,
 }
 
 impl Vector4b {
-    pub fn new(x: bool, y: bool, z: bool, w: bool) -> Vector4b {
-        Vector4b { x, y, z, w }
+    pub fn new(midi_out0: bool, midi_out1: bool, midi_out2: bool, midi_out3: bool) -> Vector4b {
+        Vector4b {
+            midi_out0,
+            midi_out1,
+            midi_out2,
+            midi_out3,
+        }
     }
 
     pub fn zero() -> Vector4b {
         Vector4b {
-            x: false,
-            y: false,
-            z: false,
-            w: false,
+            midi_out0: false,
+            midi_out1: false,
+            midi_out2: false,
+            midi_out3: false,
         }
     }
 }
@@ -24,10 +31,10 @@ impl Vector4b {
 impl Default for Vector4b {
     fn default() -> Vector4b {
         Vector4b {
-            x: false,
-            y: false,
-            z: false,
-            w: false,
+            midi_out0: false,
+            midi_out1: false,
+            midi_out2: false,
+            midi_out3: false,
         }
     }
 }

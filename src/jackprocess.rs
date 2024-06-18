@@ -6,6 +6,11 @@ use ringbuf::SharedRb;
 use std::mem::MaybeUninit;
 use std::sync::Arc;
 use std::{process::exit, thread, time::Duration};
+use struct_iterable::Iterable;
+
+use crate::midi_matrix;
+use crate::midi_matrix::MidiMatrix;
+use crate::vector4b::Vector4b;
 
 pub fn start_jack_thread(mut rx_close: BusReader<bool>) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
@@ -15,8 +20,23 @@ pub fn start_jack_thread(mut rx_close: BusReader<bool>) -> std::thread::JoinHand
                 .expect("No Jack server running\n");
         let sample_rate = client.sample_rate();
         // register ports:
-        let _midi_in = client.register_port("mfm_midi_in", jack::MidiIn).unwrap();
-        let _midi_out = client.register_port("mfm_midi_out", jack::MidiOut).unwrap();
+        let midi_in0 = client.register_port("mfm_midi_in0", jack::MidiIn).unwrap();
+        let midi_in1 = client.register_port("mfm_midi_in1", jack::MidiIn).unwrap();
+        let midi_in2 = client.register_port("mfm_midi_in2", jack::MidiIn).unwrap();
+        let midi_in3 = client.register_port("mfm_midi_in3", jack::MidiIn).unwrap();
+        let midi_in_vec = vec![midi_in0, midi_in1, midi_in2, midi_in3];
+        let midi_out0 = client
+            .register_port("mfm_midi_out0", jack::MidiOut)
+            .unwrap();
+        let midi_out1 = client
+            .register_port("mfm_midi_out1", jack::MidiOut)
+            .unwrap();
+        let midi_out2 = client
+            .register_port("mfm_midi_out2", jack::MidiOut)
+            .unwrap();
+        let midi_out3 = client
+            .register_port("mfm_midi_out3", jack::MidiOut)
+            .unwrap();
         let mut frame_size = client.buffer_size() as usize;
         if client.set_buffer_size(frame_size as u32).is_ok() {
             // get frame size
@@ -39,7 +59,18 @@ pub fn start_jack_thread(mut rx_close: BusReader<bool>) -> std::thread::JoinHand
             exit(-1);
         }
 
+        let midi_mat = MidiMatrix::new();
+
         let process_callback = move |_: &jack::Client, ps: &jack::ProcessScope| -> jack::Control {
+            for midi_in in midi_in_vec.iter() {
+                let midi_in0_events = midi_in.iter(ps);
+                for e in midi_in0_events {
+                    for (_, midi_out) in midi_mat.iter() {
+                        // check matrix
+                    }
+                }
+            }
+
             jack::Control::Continue
         };
         let process = jack::ClosureProcessHandler::new(process_callback);
