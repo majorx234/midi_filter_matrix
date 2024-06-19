@@ -1,19 +1,16 @@
 use bus::BusReader;
 use crossbeam_channel::Receiver;
 use jack;
-use ringbuf::Producer;
-use ringbuf::SharedRb;
-use std::borrow::Borrow;
-use std::mem::MaybeUninit;
-use std::sync::Arc;
 use std::{process::exit, thread, time::Duration};
 use struct_iterable::Iterable;
 
-use crate::midi_matrix;
 use crate::midi_matrix::MidiMatrix;
 use crate::vector4b::Vector4b;
 
-pub fn start_jack_thread(mut rx_close: BusReader<bool>) -> std::thread::JoinHandle<()> {
+pub fn start_jack_thread(
+    mut rx_close: BusReader<bool>,
+    rx_midi_matrix_event: Receiver<MidiMatrix>,
+) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         let mut run: bool = true;
         let (client, _status) =
@@ -61,9 +58,13 @@ pub fn start_jack_thread(mut rx_close: BusReader<bool>) -> std::thread::JoinHand
             exit(-1);
         }
 
-        let midi_mat = MidiMatrix::new();
+        let mut midi_mat = MidiMatrix::new();
 
         let process_callback = move |_: &jack::Client, ps: &jack::ProcessScope| -> jack::Control {
+            // rx_midi_matrix_event
+            if let Ok(rx_midi_matrix_event) = rx_midi_matrix_event.try_recv() {
+                midi_mat = rx_midi_matrix_event;
+            }
             for (midi_in_events, (_, midi_in_opt)) in midi_in_vec.iter().zip(midi_mat.iter()) {
                 if let Some(matrix_midi_in) = midi_in_opt.downcast_ref::<Vector4b>() {
                     for e in midi_in_events.iter(ps) {
