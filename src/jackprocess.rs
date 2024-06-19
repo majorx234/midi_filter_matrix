@@ -3,6 +3,7 @@ use crossbeam_channel::Receiver;
 use jack;
 use ringbuf::Producer;
 use ringbuf::SharedRb;
+use std::borrow::Borrow;
 use std::mem::MaybeUninit;
 use std::sync::Arc;
 use std::{process::exit, thread, time::Duration};
@@ -24,7 +25,7 @@ pub fn start_jack_thread(mut rx_close: BusReader<bool>) -> std::thread::JoinHand
         let midi_in1 = client.register_port("mfm_midi_in1", jack::MidiIn).unwrap();
         let midi_in2 = client.register_port("mfm_midi_in2", jack::MidiIn).unwrap();
         let midi_in3 = client.register_port("mfm_midi_in3", jack::MidiIn).unwrap();
-        let midi_in_vec = vec![midi_in0, midi_in1, midi_in2, midi_in3];
+        let midi_in_vec = [midi_in0, midi_in1, midi_in2, midi_in3];
         let midi_out0 = client
             .register_port("mfm_midi_out0", jack::MidiOut)
             .unwrap();
@@ -37,6 +38,7 @@ pub fn start_jack_thread(mut rx_close: BusReader<bool>) -> std::thread::JoinHand
         let midi_out3 = client
             .register_port("mfm_midi_out3", jack::MidiOut)
             .unwrap();
+        let mut midi_out_vec = [midi_out0, midi_out1, midi_out2, midi_out3];
         let mut frame_size = client.buffer_size() as usize;
         if client.set_buffer_size(frame_size as u32).is_ok() {
             // get frame size
@@ -62,11 +64,20 @@ pub fn start_jack_thread(mut rx_close: BusReader<bool>) -> std::thread::JoinHand
         let midi_mat = MidiMatrix::new();
 
         let process_callback = move |_: &jack::Client, ps: &jack::ProcessScope| -> jack::Control {
-            for midi_in in midi_in_vec.iter() {
-                let midi_in0_events = midi_in.iter(ps);
-                for e in midi_in0_events {
-                    for (_, midi_out) in midi_mat.iter() {
-                        // check matrix
+            for (midi_in_events, (_, midi_in_opt)) in midi_in_vec.iter().zip(midi_mat.iter()) {
+                if let Some(matrix_midi_in) = midi_in_opt.downcast_ref::<Vector4b>() {
+                    for e in midi_in_events.iter(ps) {
+                        for ((_, matrix_midi_out_opt), midi_out) in
+                            matrix_midi_in.iter().zip(midi_out_vec.iter_mut())
+                        {
+                            if let Some(matrix_midi_out) =
+                                matrix_midi_out_opt.downcast_ref::<bool>()
+                            {
+                                if *matrix_midi_out {
+                                    let _ = midi_out.writer(ps).write(&e);
+                                }
+                            }
+                        }
                     }
                 }
             }
