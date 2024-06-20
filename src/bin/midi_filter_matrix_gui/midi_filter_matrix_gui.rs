@@ -1,8 +1,22 @@
+use crossbeam_channel::Sender;
 use eframe::egui::{self, ViewportCommand, Widget};
-use midi_filter_matrix::ui::elements::DebugConsole;
+use midi_filter_matrix::{midi_matrix::MidiMatrix, ui::elements::DebugConsole};
 
 pub struct MidiFilterMatrixGUI {
     pub console: DebugConsole,
+    pub tx_midi_matrix_opt: Option<Sender<MidiMatrix>>,
+}
+
+impl MidiFilterMatrixGUI {
+    pub fn new(tx_midi_matrix: Sender<MidiMatrix>) -> Self {
+        MidiFilterMatrixGUI {
+            console: DebugConsole {
+                n_items: 0,
+                msgs: Vec::new(),
+            },
+            tx_midi_matrix_opt: Some(tx_midi_matrix),
+        }
+    }
 }
 
 impl Default for MidiFilterMatrixGUI {
@@ -12,6 +26,7 @@ impl Default for MidiFilterMatrixGUI {
                 n_items: 0,
                 msgs: Vec::new(),
             },
+            tx_midi_matrix_opt: None,
         }
     }
 }
